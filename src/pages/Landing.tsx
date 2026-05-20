@@ -1,35 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import { useLifeStore, type LifeSeason } from '../store/useLifeStore';
 import { computeLiveMetrics, WEEK_IN_MS } from '../utils/weekUtils';
 import { ScrapbookCard } from '../components/cards/ScrapbookCard';
 import { NewspaperCard } from '../components/cards/NewspaperCard';
 import { NotebookCard } from '../components/cards/NotebookCard';
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 40 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-};
-
-const staggerContainer = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.12 } },
-};
-
-const floatVariant = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (custom) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: custom * 0.1, duration: 0.5 },
-  }),
-};
-
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.8 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.6 } },
-};
 
 const mockData = {
   name: 'Your Name',
@@ -54,52 +30,40 @@ const mockData = {
   percentage: 26.8,
 };
 
-function StatCard({ 
-  value, 
-  label, 
-  rotate,
-  bgColor = 'bg-gradient-to-br from-emerald-300 to-teal-400'
+// Memory fragment component
+function MemoryFragment({ 
+  index, 
+  emoji, 
+  text 
 }: { 
-  value: number; 
-  label: string; 
-  rotate: string;
-  bgColor?: string;
+  index: number; 
+  emoji: string; 
+  text: string 
 }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const inView = useInView(ref, { once: true, margin: '-80px' });
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    if (!inView) return;
-    const duration = 1500;
-    const startTime = performance.now();
-    const startValue = 0;
-
-    const tick = (now: number) => {
-      const progress = Math.min((now - startTime) / duration, 1);
-      const nextValue = Math.floor(startValue + (value - startValue) * progress);
-      setDisplay(nextValue);
-      if (progress < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, [inView, value]);
-
   return (
     <motion.div
-      ref={ref}
-      variants={fadeUp}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: '-80px' }}
-      className={`relative ${bgColor} p-8 rounded-3xl text-center shadow-lg border-2 border-white/30 backdrop-blur-sm`}
-      style={{ transform: `rotate(${rotate})` }}
-      whileHover={{ y: -8, rotate: '0deg' }}
+      className="absolute"
+      style={{
+        width: '280px',
+        height: '380px',
+        background: 'white',
+        borderRadius: '20px',
+        padding: '24px',
+        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)',
+        border: '2px solid rgba(255,255,255,0.6)',
+      }}
+      animate={{ y: index * -120, opacity: 0.9 - index * 0.15 }}
+      transition={{ duration: 0.8, ease: 'easeOut' }}
     >
-      <div className="text-5xl font-bold text-white mb-3">{display.toLocaleString()}</div>
-      <div className="text-sm font-semibold text-white/90">{label}</div>
-      <div className="absolute -top-2 -right-2 w-6 h-6 bg-yellow-300 rounded-full shadow-md" />
+      <div className="text-6xl mb-4">{emoji}</div>
+      <div className="text-xl font-bold text-slate-900 leading-tight">{text}</div>
     </motion.div>
   );
+}
+
+function StatCard() {
+  // Removed - no longer used in new design
+  return null;
 }
 
 export function Landing() {
@@ -173,558 +137,533 @@ export function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-pink-50 to-purple-50 text-slate-900 overflow-hidden">
+    <div className="w-full bg-white text-slate-900" style={{ overflow: 'clip' }}>
       <style>{`
         html { scroll-behavior: smooth; }
-        .section-full { width: 100%; box-sizing: border-box; }
+        * { box-sizing: border-box; }
+        body { margin: 0; }
         
-        .hero-section {
-          min-height: 100vh;
-          width: 100%;
-          padding: 60px 40px;
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+          100% { transform: translateY(0px); }
+        }
+        
+        @keyframes pulse-glow {
+          0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+          70% { box-shadow: 0 0 0 30px rgba(59, 130, 246, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        
+        @keyframes heartbeat {
+          0%, 100% { transform: scaleY(1); }
+          25% { transform: scaleY(1.2); }
+          50% { transform: scaleY(1); }
+        }
+        
+        .hero-enormous {
+          height: 100vh;
+          background: linear-gradient(135deg, #fef3c7 0%, #fecaca 50%, #f3e8ff 100%);
+          position: relative;
+          overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(254, 243, 199, 0.6) 0%, rgba(244, 204, 204, 0.4) 100%);
-          position: relative;
-          overflow: hidden;
         }
         
-        .hero-decoration {
-          position: absolute;
-          pointer-events: none;
-        }
-        
-        .decoration-circle {
-          width: 280px;
-          height: 280px;
-          background: rgba(59, 130, 246, 0.1);
-          border-radius: 50%;
-          position: absolute;
-        }
-        
-        .decoration-square {
-          width: 120px;
-          height: 120px;
-          background: rgba(236, 72, 153, 0.08);
-          transform: rotate(45deg);
-          position: absolute;
-        }
-        
-        .hero-layout { 
-          display: flex; 
-          gap: 60px; 
-          align-items: center; 
-          width: 100%; 
-          max-width: 1200px;
+        .hero-content {
           position: relative;
           z-index: 2;
-        }
-        
-        .hero-left { width: 55%; }
-        .hero-right { width: 45%; position: relative; height: 500px; }
-        
-        .pill-pulse { 
-          animation: pulse 2.8s ease-in-out infinite; 
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-          border: 2px solid rgba(59, 130, 246, 0.3);
-        }
-        
-        @keyframes pulse {
-          0% { transform: scale(1); box-shadow: 0 0 0 rgba(59, 130, 246, 0.2); }
-          50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
-          100% { transform: scale(1); box-shadow: 0 0 0 rgba(59, 130, 246, 0.2); }
-        }
-        
-        .hero-card {
-          width: 260px;
-          height: 460px;
-          background: white;
-          border-radius: 20px;
-          overflow: hidden;
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
-          border: 2px solid rgba(255, 255, 255, 0.8);
-        }
-        
-        .card-1 { transform: rotate(-12deg) translateX(-30px); z-index: 1; }
-        .card-2 { transform: rotate(0deg) translateY(-30px); z-index: 3; }
-        .card-3 { transform: rotate(8deg) translateX(30px); z-index: 2; }
-        
-        .card-fan { 
-          position: absolute; 
-          transition: all 0.3s ease;
-        }
-        
-        .card-fan:hover { 
-          z-index: 10; 
-          transform: translateY(-20px) rotate(0deg) !important;
-        }
-        
-        .float-card { 
-          animation: float 3s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-          0% { transform: translateY(0); }
-          50% { transform: translateY(-12px); }
-          100% { transform: translateY(0); }
-        }
-        
-        .timeline-step {
-          display: flex;
-          gap: 60px;
-          align-items: flex-start;
-          padding: 80px 120px;
+          max-width: 1400px;
           width: 100%;
-          box-sizing: border-box;
+          padding: 0 60px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 100px;
+          align-items: center;
         }
         
-        .timeline-number {
-          min-width: 140px;
-          font-size: 100px;
-          font-weight: 800;
+        .hero-text h1 {
+          font-size: clamp(3.5rem, 12vw, 8rem);
+          font-weight: 900;
+          line-height: 1;
+          margin: 0;
+          margin-bottom: 20px;
+          letter-spacing: -2px;
+        }
+        
+        .hero-number {
           background: linear-gradient(135deg, #3b82f6 0%, #ec4899 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
         }
         
-        .timeline-divider {
-          width: 100%;
-          height: 2px;
-          background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.1) 50%, transparent 100%);
+        .hero-bg-decor {
+          position: absolute;
+          border-radius: 50%;
+          opacity: 0.1;
+          pointer-events: none;
         }
         
-        .templates-section {
-          background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 27, 40, 0.95) 100%);
+        .memory-stack {
+          position: relative;
+          height: 600px;
+        }
+        
+        .memory-card {
+          position: absolute;
+          width: 300px;
+          height: 400px;
+          background: white;
+          border-radius: 24px;
+          padding: 32px;
+          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+          border: 2px solid rgba(255, 255, 255, 0.7);
+        }
+        
+        .timeline-diagonal {
+          position: relative;
+          padding: 120px 60px;
+          background: white;
+        }
+        
+        .timeline-path {
+          position: absolute;
+          width: 3px;
+          height: 100%;
+          background: linear-gradient(180deg, rgba(59, 130, 246, 0.3) 0%, rgba(236, 72, 153, 0.3) 100%);
+          left: 20%;
+          top: 0;
+          transform: skewX(-20deg);
+        }
+        
+        .timeline-item {
+          position: relative;
+          margin-bottom: 80px;
+          padding-left: 120px;
+        }
+        
+        .timeline-dot {
+          position: absolute;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: #3b82f6;
+          border: 4px solid white;
+          left: 0;
+          top: 0;
+          box-shadow: 0 0 0 3px #3b82f6;
+        }
+        
+        .emoji-huge {
+          font-size: 72px;
+          margin-bottom: 16px;
+        }
+        
+        .template-stack {
+          perspective: 1000px;
+          position: relative;
+          height: 500px;
+          margin: 80px auto;
+        }
+        
+        .card-stack-item {
+          position: absolute;
+          width: 280px;
+          height: 450px;
+          background: white;
+          border-radius: 28px;
+          overflow: hidden;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+          border: 3px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .template-dark-bg {
+          background: linear-gradient(135deg, #0f172a 0%, #1e1b28 100%);
           color: #faf9f6;
           padding: 120px 60px;
-        }
-        
-        .template-grid { 
-          display: flex; 
-          gap: 48px; 
-          justify-content: center; 
-          padding: 60px 0;
-          flex-wrap: wrap;
-        }
-        
-        .template-frame {
-          width: 240px;
-          height: 420px;
-          border-radius: 32px;
-          border: 8px solid #3b82f6;
-          overflow: hidden;
-          background: white;
-          box-shadow: 0 20px 50px rgba(59, 130, 246, 0.3);
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .template-frame:hover {
-          transform: translateY(-10px);
-          box-shadow: 0 30px 70px rgba(59, 130, 246, 0.4);
-        }
-        
-        .template-inner {
-          width: 1080px;
-          height: 1920px;
-          transform: scale(0.222) translateX(0) translateY(0);
-          transform-origin: top left;
-        }
-        
-        .numbers-section {
-          min-height: 100vh;
-          padding: 120px 80px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(180deg, rgba(254, 243, 199, 0.5) 0%, rgba(248, 187, 208, 0.5) 100%);
-        }
-        
-        .final-cta {
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 24px;
-          background: linear-gradient(135deg, rgba(30, 27, 40, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%);
-          color: #faf9f6;
-          text-align: center;
           position: relative;
           overflow: hidden;
         }
         
-        .cta-button {
+        .stat-tile {
+          background: white;
+          border-radius: 20px;
+          padding: 40px;
+          text-align: center;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+          border: 2px solid rgba(0, 0, 0, 0.05);
+          min-width: 240px;
+        }
+        
+        .stat-number {
+          font-size: 64px;
+          font-weight: 900;
           background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin-bottom: 12px;
+        }
+        
+        .stat-label {
+          font-size: 14px;
+          font-weight: 600;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        
+        .cinematic-cta {
+          background: linear-gradient(135deg, #000000 0%, #1e1b28 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          overflow: hidden;
+          padding: 60px;
+        }
+        
+        .cta-text h2 {
+          font-size: clamp(2.5rem, 10vw, 5rem);
+          font-weight: 900;
           color: white;
-          font-size: 18px;
-          font-weight: 700;
-          padding: 16px 40px;
-          border-radius: 50px;
-          border: none;
-          cursor: pointer;
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-          box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+          margin: 0;
+          line-height: 1.1;
+          margin-bottom: 20px;
         }
         
-        .cta-button:hover { 
-          transform: scale(1.08);
-          box-shadow: 0 15px 40px rgba(59, 130, 246, 0.5);
+        .cta-gradient-text {
+          background: linear-gradient(135deg, #60a5fa 0%, #f472b6 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
         
-        .particle {
-          width: 4px;
-          height: 4px;
-          background: rgba(59, 130, 246, 0.6);
-          border-radius: 50%;
-          position: absolute;
-        }
-        
-        @keyframes floatParticle {
-          0% { transform: translateY(0); opacity: 0.7; }
-          50% { transform: translateY(-15px); opacity: 1; }
-          100% { transform: translateY(0); opacity: 0.7; }
-        }
-        
-        @media (max-width: 1100px) {
-          .hero-layout { flex-direction: column; gap: 40px; }
-          .hero-left, .hero-right { width: 100%; }
-          .hero-right { height: 450px; }
-          .hero-section { padding: 40px 20px; }
-          .timeline-step { flex-direction: column; gap: 20px; padding: 40px 20px; }
-          .templates-section { padding: 60px 20px; }
-          .numbers-section { padding: 60px 20px; }
-          .decoration-circle { display: none; }
-          .decoration-square { display: none; }
+        @media (max-width: 1024px) {
+          .hero-content { grid-template-columns: 1fr; gap: 40px; padding: 0 40px; }
+          .hero-text h1 { font-size: clamp(2.5rem, 8vw, 4rem); }
+          .memory-stack { height: 400px; }
+          .memory-card { width: 240px; height: 320px; }
+          .template-dark-bg { padding: 60px 20px; }
+          .cinematic-cta { padding: 40px 20px; }
+          .cta-text h2 { font-size: clamp(1.8rem, 6vw, 3rem); }
         }
       `}</style>
 
-      {/* Section 1: Hero */}
-      <section className="hero-section section-full">
-        <div className="hero-decoration decoration-circle" style={{ top: '-100px', right: '-100px' }} />
-        <div className="hero-decoration decoration-square" style={{ top: '20%', left: '-60px' }} />
-        <div className="hero-decoration decoration-circle" style={{ bottom: '-80px', left: '10%', width: '200px', height: '200px' }} />
+      {/* HERO MOMENT - Massive asymmetrical opening */}
+      <section className="hero-enormous">
+        <div className="hero-bg-decor" style={{ width: '500px', height: '500px', top: '-150px', right: '-150px' }} />
+        <div className="hero-bg-decor" style={{ width: '300px', height: '300px', bottom: '-100px', left: '10%' }} />
         
-        <div className="hero-layout">
-          <div className="hero-left">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 pill-pulse px-4 py-2.5 rounded-full text-sm font-semibold mb-8"
-            >
-              ✨ 4,000 weeks · One extraordinary life
-            </motion.div>
-
-            <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-              <motion.div variants={fadeUp} className="text-5xl font-bold text-slate-900 leading-tight mb-2">
-                You&apos;ve lived
-              </motion.div>
-              <motion.div variants={fadeUp} className="text-7xl font-black bg-gradient-to-r from-blue-600 to-pink-600 bg-clip-text text-transparent mb-3 leading-tight">
-                {livedWeeks.toLocaleString()} weeks.
-              </motion.div>
-              <motion.div variants={fadeUp} className="text-4xl font-bold text-slate-800 leading-tight">
-                What&apos;s your story?
-              </motion.div>
-            </motion.div>
-
+        <div className="hero-content">
+          <motion.div className="hero-text">
             <motion.p
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.6 }}
-              className="text-lg text-slate-700 mt-6 max-w-xl leading-relaxed font-medium"
+              transition={{ delay: 0.1 }}
+              className="text-lg font-bold text-slate-700 mb-4"
+            >
+              ✨ you&apos;ve lived
+            </motion.p>
+            
+            <motion.h1
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.8 }}
+            >
+              <span className="hero-number">{livedWeeks.toLocaleString()}</span>
+              <br />
+              weeks.
+            </motion.h1>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="text-2xl font-bold text-slate-800 mt-8 mb-8 max-w-md"
+            >
+              What&apos;s your story?
+            </motion.p>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="text-lg text-slate-700 leading-relaxed max-w-md mb-10"
             >
               Turn your life into a beautiful visual story. Capture what matters. Share what&apos;s real.
             </motion.p>
-
-            <div className="flex gap-4 mt-10 flex-wrap">
+            
+            <div className="flex gap-4">
               <motion.button
-                whileHover={{ y: -4 }}
-                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.9 }}
                 onClick={() => navigate('/build')}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-7 py-3.5 rounded-full text-sm font-bold shadow-lg hover:shadow-xl transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-full font-bold shadow-xl hover:shadow-2xl transition-all"
               >
                 Create my story →
               </motion.button>
               <motion.button
-                whileHover={{ y: -4 }}
-                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.95 }}
                 onClick={handleScrollToHow}
-                className="border-2 border-slate-900 text-slate-900 px-7 py-3 rounded-full text-sm font-bold bg-white/50 backdrop-blur hover:bg-white transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="border-2 border-slate-900 text-slate-900 px-8 py-3 rounded-full font-bold bg-white/40 backdrop-blur hover:bg-white/60 transition-all"
               >
                 How it works ↓
               </motion.button>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="hero-right">
-            <div className="card-fan float-card card-1" style={{ top: '20px', left: '40px' }}>
-              <div className="hero-card">
-                <ScrapbookCard scale={0.25} />
-              </div>
-            </div>
-            <div className="card-fan float-card card-2" style={{ top: '60px', left: '140px', animationDelay: '0.3s' }}>
-              <div className="hero-card">
-                <NewspaperCard scale={0.25} />
-              </div>
-            </div>
-            <div className="card-fan float-card card-3" style={{ top: '100px', left: '20px', animationDelay: '0.6s' }}>
-              <div className="hero-card">
-                <NotebookCard scale={0.25} />
-              </div>
-            </div>
-          </div>
+          {/* Memory card stack - floating */}
+          <motion.div className="memory-stack">
+            <MemoryFragment index={0} emoji="🎨" text="Capturing moments that matter" />
+            <MemoryFragment index={1} emoji="🌟" text="Living with intention" />
+            <MemoryFragment index={2} emoji="📖" text="Your life. Your story." />
+          </motion.div>
         </div>
       </section>
 
-      {/* Section 2: How it works */}
-      <section id="how-it-works" className="section-full" style={{ background: 'white' }}>
+      {/* TIMELINE - Tilted diagonal with emoji milestones */}
+      <section className="timeline-diagonal" id="how-it-works">
         <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
-          className="text-5xl font-black text-center py-20 bg-gradient-to-r from-blue-600 to-pink-600 bg-clip-text text-transparent"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 0.3 }}
+          viewport={{ once: true }}
+          className="timeline-path"
+        />
+        
+        <motion.h2
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-5xl font-black text-center mb-20 text-slate-900"
         >
-          Three steps to your story
-        </motion.div>
-
-        <div className="timeline-divider" />
+          How your story comes to life
+        </motion.h2>
 
         {[{
-          step: '01',
+          emoji: '👤',
           title: 'Tell us who you are',
-          text: 'Your name, age, birthday, zodiac. The essentials that make you, you.',
-          emoji: '👤'
+          desc: 'Your name, birthday, zodiac. The essentials that make you, you.'
         }, {
-          step: '02',
+          emoji: '🎨',
           title: 'Paint what matters',
-          text: 'Your reads, obsessions, bucket list. All the things that make your life interesting.',
-          emoji: '🎨'
+          desc: 'Your reads, obsessions, bucket list. All the things that make your life interesting.'
         }, {
-          step: '03',
+          emoji: '✨',
           title: 'Share your story',
-          text: 'Download your beautiful card. Post it. Own it. Inspire others.',
-          emoji: '✨'
-        }].map((item) => (
-          <div key={item.step}>
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-80px' }}
-              className="timeline-step"
-            >
-              <div className="timeline-number">{item.step}</div>
-              <div className="flex-1">
-                <div className="text-3xl mb-4">{item.emoji}</div>
-                <div className="text-2xl font-bold text-slate-900 mb-2">{item.title}</div>
-                <div className="text-lg text-slate-700 leading-relaxed max-w-xl">{item.text}</div>
-              </div>
-            </motion.div>
-            <div className="timeline-divider" />
-          </div>
+          desc: 'Download your beautiful card. Post it. Own it. Inspire others.'
+        }].map((item, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, x: -40 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ delay: idx * 0.2 }}
+            className="timeline-item"
+          >
+            <div className="timeline-dot" />
+            <div className="emoji-huge">{item.emoji}</div>
+            <h3 className="text-3xl font-bold text-slate-900 mb-3">{item.title}</h3>
+            <p className="text-lg text-slate-700 leading-relaxed max-w-md">{item.desc}</p>
+          </motion.div>
         ))}
       </section>
 
-      {/* Section 3: Templates */}
-      <section className="templates-section section-full">
+      {/* TEMPLATES - Overlapping card stack */}
+      <section className="template-dark-bg">
         <motion.h2
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
-          className="text-5xl font-black text-center pt-16 mb-6"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-5xl font-black text-center mb-8"
         >
           Choose your vibe
         </motion.h2>
-        
         <motion.p
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
-          className="text-center text-lg text-white/70 mb-16 max-w-2xl mx-auto"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="text-center text-lg text-white/70 mb-20 max-w-2xl mx-auto"
         >
-          Three distinct design templates. All equally beautiful. Pick the one that feels like you.
+          Three distinct templates. All equally beautiful. Pick the one that feels like you.
         </motion.p>
 
-        <div className="template-grid">
-          {[{
-            component: <ScrapbookCard scale={0.222} />,
-            label: 'Scrapbook',
-            desc: 'Chaotic & creative',
-            accent: 'from-pink-500 to-rose-500'
-          }, {
-            component: <NewspaperCard scale={0.222} />,
-            label: 'Newspaper',
-            desc: 'Bold & striking',
-            accent: 'from-yellow-500 to-orange-500'
-          }, {
-            component: <NotebookCard scale={0.222} />,
-            label: 'Notebook',
-            desc: 'Dreamy & introspective',
-            accent: 'from-purple-500 to-pink-500'
-          }].map((card, idx) => (
+        <div className="template-stack mx-auto" style={{ maxWidth: '500px' }}>
+          {[
+            { component: <ScrapbookCard scale={0.222} />, label: 'Scrapbook', color: 'from-pink-500' },
+            { component: <NewspaperCard scale={0.222} />, label: 'Newspaper', color: 'from-yellow-500' },
+            { component: <NotebookCard scale={0.222} />, label: 'Notebook', color: 'from-purple-500' },
+          ].map((card, idx) => (
             <motion.div
               key={card.label}
-              variants={floatVariant}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-80px' }}
-              custom={idx}
-              className="flex flex-col items-center"
+              className="card-stack-item"
+              style={{
+                zIndex: 3 - idx,
+                left: `${idx * 40}px`,
+                top: `${idx * 80}px`,
+              }}
+              whileHover={{
+                z: 10,
+                rotate: -5 + idx * 2,
+                y: -30,
+              }}
+              transition={{ duration: 0.3 }}
             >
-              <div className="template-frame">
-                <div className="template-inner">{card.component}</div>
-              </div>
-              <div className="mt-6 text-center">
-                <div className="text-xl font-bold">{card.label}</div>
-                <div className={`text-sm font-semibold bg-gradient-to-r ${card.accent} bg-clip-text text-transparent`}>{card.desc}</div>
+              <div style={{ width: '1080px', height: '1920px', transform: 'scale(0.222)', transformOrigin: 'top left' }}>
+                {card.component}
               </div>
             </motion.div>
           ))}
         </div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="text-center text-white/60 mt-20 text-sm font-medium"
+        >
+          Hover to preview. Each design tells your story differently.
+        </motion.p>
       </section>
 
-      {/* Section 4: Numbers */}
-      <section className="numbers-section section-full">
+      {/* NUMBERS - Emotional stat reveals */}
+      <section className="py-32 px-8 bg-gradient-to-b from-white to-slate-50">
         <motion.h2
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
-          className="text-5xl font-black text-center mb-20 text-slate-900"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-5xl font-black text-center mb-8 text-slate-900"
         >
           The numbers that hit different
         </motion.h2>
+        
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="text-center text-lg text-slate-700 mb-20 max-w-2xl mx-auto"
+        >
+          Most people never stop to count. Here&apos;s what the numbers mean.
+        </motion.p>
 
-        <div className="flex flex-wrap gap-8 justify-center">
-          <StatCard 
-            value={4000} 
-            label="weeks in an average life" 
-            rotate="-3deg"
-            bgColor="bg-gradient-to-br from-blue-400 to-cyan-500"
-          />
-          <StatCard 
-            value={168} 
-            label="hours in every week" 
-            rotate="2deg"
-            bgColor="bg-gradient-to-br from-pink-400 to-rose-500"
-          />
-          <StatCard 
-            value={2920} 
-            label="weekends remaining" 
-            rotate="-1deg"
-            bgColor="bg-gradient-to-br from-purple-400 to-indigo-500"
-          />
+        <div className="flex flex-wrap gap-8 justify-center mb-16">
+          {[
+            { num: 4000, label: 'weeks in an average life' },
+            { num: 168, label: 'hours in every week' },
+            { num: 2920, label: 'weekends remaining (avg)' },
+          ].map((stat, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: idx * 0.2 }}
+              className="stat-tile"
+            >
+              <motion.div
+                initial={{ y: 20 }}
+                whileInView={{ y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.2 + 0.2, duration: 0.8 }}
+                className="stat-number"
+              >
+                {stat.num.toLocaleString()}
+              </motion.div>
+              <div className="stat-label">{stat.label}</div>
+            </motion.div>
+          ))}
         </div>
 
         <motion.p
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
-          className="text-center text-slate-700 mt-16 italic text-lg font-medium max-w-2xl"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="text-center text-slate-700 italic text-lg max-w-2xl mx-auto leading-relaxed"
         >
-          The average person gets about 4,000 weeks. You&apos;ve already used {birthdate ? livedWeeks.toLocaleString() : 'some'} of them. 
-          <br />
+          You&apos;ve already used {birthdate ? livedWeeks.toLocaleString() : 'some'} weeks.<br />
           What will you do with the rest?
         </motion.p>
       </section>
 
-      {/* Section 5: Final CTA */}
-      <section className="final-cta section-full">
+      {/* FINAL CTA - Cinematic climax */}
+      <section className="cinematic-cta">
         <motion.div
-          variants={scaleIn}
-          initial="hidden"
-          whileInView="visible"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 0.3 }}
           viewport={{ once: true }}
-          className="text-sm font-semibold text-blue-400 mb-4"
-        >
-          Week {birthdate ? livedWeeks.toLocaleString() : '???'} of your life
-        </motion.div>
-        
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="text-6xl sm:text-7xl font-black text-white leading-tight"
-        >
-          Your life is
-        </motion.div>
-        
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="text-6xl sm:text-7xl font-black bg-gradient-to-r from-blue-400 to-pink-400 bg-clip-text text-transparent leading-tight"
-        >
-          worth sharing.
-        </motion.div>
-        
-        <motion.p
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="text-xl text-white/70 mt-8"
-        >
-          Create your card. Download instantly. No account needed.
-        </motion.p>
-        
-        <motion.button 
-          onClick={() => navigate('/build')} 
-          className="cta-button mt-8"
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          Create my story — it&apos;s free →
-        </motion.button>
-        
-        <div className="text-sm text-white/50 mt-6">
-          ✦ Beautiful card designs · Instagram ready · Share or download · No signup required
-        </div>
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }}
+        />
 
-        {[{
-          top: '15%',
-          left: '10%',
-          duration: '4s',
-        }, {
-          top: '30%',
-          left: '85%',
-          duration: '6s',
-        }, {
-          top: '55%',
-          left: '8%',
-          duration: '7s',
-        }, {
-          top: '70%',
-          left: '80%',
-          duration: '5s',
-        }, {
-          top: '45%',
-          left: '45%',
-          duration: '6.5s',
-        }, {
-          top: '25%',
-          left: '75%',
-          duration: '4.5s',
-        }, {
-          top: '80%',
-          left: '25%',
-          duration: '5.5s',
-        }].map((dot, idx) => (
-          <span
-            key={idx}
-            className="particle"
-            style={{ top: dot.top, left: dot.left, animation: `floatParticle ${dot.duration} ease-in-out infinite` }}
-          />
-        ))}
+        <div className="relative z-10 text-center max-w-2xl">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-sm font-semibold text-blue-400 mb-6"
+          >
+            Week {birthdate ? livedWeeks.toLocaleString() : '???'} of your life
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="cta-text"
+          >
+            <h2>Your life is</h2>
+            <h2 className="cta-gradient-text">worth sharing.</h2>
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.6 }}
+            className="text-xl text-white/70 mt-8 mb-10"
+          >
+            No signup. No payment. Just pure, authentic storytelling.
+          </motion.p>
+
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.8 }}
+            onClick={() => navigate('/build')}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-gradient-to-r from-blue-500 to-pink-500 text-white px-10 py-5 rounded-full font-bold text-lg shadow-2xl hover:shadow-3xl transition-all"
+          >
+            Create my story — it&apos;s free →
+          </motion.button>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 1 }}
+            className="text-sm text-white/50 mt-8"
+          >
+            ✦ Beautiful designs · Instagram ready · Shareable · Instant download
+          </motion.p>
+        </div>
       </section>
     </div>
   );
